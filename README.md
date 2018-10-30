@@ -111,3 +111,82 @@ NB: In meta class of our product model, we are using index_together meta opti
 Python manage.py makemigrations
 Python manage.py migrate
 ```
+## Lesson 3: Registering our models in admin site and creating views
+
+## 3.1. shop/Admin.py
+```
+from django.contrib import admin
+from .models import Category, Product
+ 
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'slug']
+    prepopulated_fields = {'slug': ('name',)}
+ 
+admin.site.register(Category, CategoryAdmin)
+ 
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ['name', 'slug', 'price', 'stock', 'available', 'created_at', 'updated_at']
+    list_filter = ['available', 'created_at', 'updated_at']
+    list_editable = ['price', 'stock', 'available']
+    prepopulated_fields = {'slug': ('name',)}
+ 
+admin.site.register(Product, ProductAdmin)
+```
+
+## 3.2. Create User:
+```
+python manage.py createsuperuser
+```
+
+## 3.3. shop/views.py 
+```
+from django.shortcuts import render, get_object_or_404
+from .models import Category, Product
+ 
+ 
+def product_list(request, category_slug=None):
+    category = None
+    categories = Category.objects.all()
+    products = Product.objects.filter(available=True)
+    if category_slug:
+        category = get_object_or_404(Category, slug=category_slug)
+        products = Product.objects.filter(category=category)
+ 
+    context = {
+        'category': category,
+        'categories': categories,
+        'products': products
+    }
+    return render(request, 'shop/product/list.html', context)
+ 
+ 
+def product_detail(request, id, slug):
+    product = get_object_or_404(Product, id=id, slug=slug, available=True)
+    context = {
+        'product': product
+    }
+    return render(request, 'shop/product/detail.html', context)
+```
+
+## Let’s Understand the code:
+```
+On line 1, I am importing shortcut methods to render my template and to check whether an object is found or to raise a 404 error.
+On line 2 – I am importing my Category and Product model.
+On line 5 – I am creating a function called product_list which I will use to display a list of products. In this function, I am also passing a second parameter called category_slug=None which I will use if products are filtered using a given category by our users.
+On line 6 – I am specifying category is equal to none, in order to show the list of products without filtering them by any category.
+On line 7 – I am querying and fetching all the categories from my database.
+On line 8 – I am fetching all the products from my database which are available by passing(available=True) filter to my queryset.
+On line 9 – line 11 I am creating an if statement to optionally filter the products based on the category_slug parameter passed from my url.
+On line 10 – I am creating a variable called category and I am creating a queryset to the Category model and filtering the result with category_slug parameter.
+On line 11 – I am creating a queryset to fetching products and filtering the products based on the category from line 10.
+From line 13 – 17 I am simply creating a data dictionary to pass to my template.
+On line 18 – I am rendering a template called list.html which I am yet to create and also passing data context.
+We also need a view to retrieve and display a single product. On line 21 we create a product_detail function where we are passing the id and slug of the product as parameters to this method.
+On line 22 – I am creating queryset and I am using id and slug to retrieve product instance. I am also checking whether the product is available or not.
+
+NB: We can get this instance by just the ID since it’s a unique attribute. However, we include the slug in the URL to build SEO-friendly URLs for products.
+From line 23 – 25 I am creating a dictionary of my data in order to pass this data to my template using a single context.
+On line 26 I am rendering a template called detail.html which I am yet to create and passing the context data to this template.
+```
+
+
