@@ -11,7 +11,7 @@
     7. Lesson 7  : Creating Shopping Cart views for Our Shop products
     8. Lesson 8  : Developing a context processor for our current cart
     9. Lesson 9  : Persisting customer orders to the database
-    10. Lesson 10: Completing persisting customer orders to database
+    10.Lesson 10: Completing persisting customer orders to database
 ```
 
 ## Lesson 1   : Building an E-Commerce Shopping Cart 
