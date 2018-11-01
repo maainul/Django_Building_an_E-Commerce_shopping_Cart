@@ -483,7 +483,7 @@ NB: This is only done in development environment.
 	python manage.py runserver
 ```
 
-# Lesson 4: Completing product detail template for Our Shop products
+# Lesson 5: Completing product detail template for Our Shop products
 
 
 ## detail.html:
