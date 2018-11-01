@@ -482,3 +482,66 @@ NB: This is only done in development environment.
 ```
 	python manage.py runserver
 ```
+
+# Lesson 4: Completing product detail template for Our Shop products
+
+
+## detail.html:
+```
+{% extends 'shop/base.html' %}
+{% load static %}
+{% block title %}
+    {% if category %}{{ category.name }} {% else %} Products {% endif %}
+{% endblock %}
+ 
+{% block content %}
+   <div class="container">
+      <div class="row" style="margin-top: 6%">
+ 
+        <div class="col-sm-8 blog-main">
+ 
+          <div class="blog-post">
+              <div class="row">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="col-md-6 text-right">
+                            <img src="{% if product.image %} {{ product.image.url }} {% else %} {% static 'img/default.jpg' %} {% endif %}" alt="..." style="height: 170px; width: auto">
+                        </div>
+                        <div class="col-md-6" style="padding-left: 20px">
+                            <h3>{{ product.name }}</h3>
+                            <h6><a href="{{ product.category.get_absolute_url }}">{{ product.category }}</a></h6>
+                            <p class="text-muted">Kshs. {{ product.price }}</p>
+                            <p>{{ product.description|safe|linebreaksbr }}</p>
+                        </div>
+                    </div>
+                </div>
+              </div>
+ 
+ 
+          </div><!-- /.blog-post -->
+ 
+        </div><!-- /.blog-main -->
+      </div><!-- /.row -->
+ 
+    </div><!-- /.container -->
+{% endblock %}
+```
+
+## Lets understand the code in this file:
+```
+Line 1 – We make sure that detail.html extends our base.html file.
+Line 2 – We load static files for this template if any.
+Line 3 to 5 – We display our product title in the block title.
+Line 7 to 37 – We create a block content where our single product detail will be displayed.
+Line 18 – We display the image of the product.
+Line 21 – We display the name of the product.
+Line 22 – We call get_absolute_url method on related category object to display the available product that belong in the same category.
+Line 23 – We display the price of the product.
+Line 24 – We display the product description.
+```
+```
+python manage.py runserver 
+```
+
+
+
