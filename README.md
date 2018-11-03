@@ -642,5 +642,308 @@ Line 45 to 46 – We define a len method to return the total number of items sto
 Line 48 to 49 – We define get_total_price method to get the total cost of the items in the cart.
 Line 51 to 53 – We define a method to clear the cart session.
 ```
+# Lesson 7: Creating Shopping Cart Views for Our Shop products
+```
+Now that we have a cart class to manage the cart, we need to create views to add, update or remove items from it. In order to add items to the cart we need a form that allow a user to select quantity. Inside our cart application, create a file called forms.py
+```
 
+# 7.1. Create forms.py
+```
+from django import forms
+
+PRODUCT_QUANTITY_CHOICES = [(i, str(i)) for i in range(1, 26)]
+
+class CartAddProductForm(forms.Form):
+    quantity = forms.TypedChoiceField(choices=PRODUCT_QUANTITY_CHOICES, coerce=int)
+    update = forms.BooleanField(required=False, initial=False, widget=forms.HiddenInput)
+```
+
+## Let’s understand this code:
+```
+Line 1 – we import django forms.
+Line 4 – we create a range that start from 1 to 26. We will use this as drop down for user to select number of items.
+Line 7 – we create a class that we will use to add items to the cart.
+Line 8 – we define a quantity field in the form and we pass our choices from line 4.
+Line 9 – we define an update field that will help in either adding or updating number of item to the cart.
+```
+
+## 7.2. cart/views.py
+```
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_POST
+from shop.models import Product
+from .cart import Cart
+from .forms import CartAddProductForm
+ 
+ 
+@require_POST
+def cart_add(request, product_id):
+    cart = Cart(request)
+    product = get_object_or_404(Product, id=product_id)
+    form = CartAddProductForm(request.POST)
+    if form.is_valid():
+        cd = form.cleaned_data
+        cart.add(product=product, quantity=cd['quantity'], update_quantity=cd['update'])
+    return redirect('cart:cart_detail')
+ 
+ 
+def cart_remove(request, product_id):
+    cart = Cart(request)
+    product = get_object_or_404(Product, id=product_id)
+    cart.remove(product)
+    return redirect('cart:cart_detail')
+ 
+ 
+def cart_detail(request):
+    cart = Cart(request)
+    for item in cart:
+        item['update_quantity_form'] = CartAddProductForm(initial={'quantity': item['quantity'], 'update': True})
+    return render(request, 'cart/detail.html', {'cart': cart})
+```
+## Let’s understand the code in this file:
+```
+	Line 1 – we import django shortcuts to helps render, redirect and query our database.
+	Line 2 – we import django decorator to post our form.
+	Line 3 – we import our Product model from our shop.
+	Line 4 – we import our Cart class from cart.py file
+	Line 5 – we import our form from forms.py file.
+	Line 8 – We use @require_POST decorator to make sure that only post request are allowed.
+	Line 9 – we define a method to add items to the Cart. This method takes product id as a parameters.
+	Line 10 – we create a cart object by passing request to our cart class.
+	Line 11 – we retrieve our product from database based on the product id.
+	Line 12 – we validated our form from the request.
+	Line 13 – 15 if our form is valid we add our item to the cart and update our cart.
+	Line 16 – we redirect our cart to cart detail page.
+	Line 19 – we define a method to remove items from the cart. This method takes product id as a parameter.
+	Line 20 – we create a cart object from our request.
+	Line 21 – we retrieve product by id.
+	Line 22 – we remove item from our shopping cart.
+	Line 23 – we redirect user to our cart detail page.
+	Line 26 – we define a method to display our cart detail page.
+	Line 27 – we create a cart object from our request.
+	Line 28 to 29 – we create a for loop to iterate through all products in the cart.
+	Line 30 – we render a template called detail.html
+```
+
+# 7.3. Create urls.py inside cart app
+
+```
+from django.conf.urls import url
+from . import views
+ 
+app_name = 'cart'
+ 
+urlpatterns = [
+    url(r'^$', views.cart_detail, name='cart_detail'),
+    url(r'^add/(?P<product_id>\d+)/$', views.cart_add, name='cart_add'),
+    url(r'^remove/(?P<product_id>\d+)/$', views.cart_remove, name='cart_remove'),
+]
+```
+
+
+## Let’s understand the code in this file:
+```
+	Line 1 – We import django url helper class.
+	Line 2 – we import views from cart views.py file.
+	Line 4 – we create a namespace for our cart application called ‘cart’
+	Line 6 to 10 – we create a list of url patterns.
+	Line 7 – we define a url that will display cart detail page.
+	Line 8 – we define url to add items to the cart.
+	Line 9 – we define url to remove items from our cart.
+```
+# 7.4. ecommerce/urls.py
+```
+from django.contrib import admin
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+ 
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('cart', include('cart.urls')),
+    path('', include('shop.urls')),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+```
+	We need to create a template to display our cart detail page. 
+	Inside our cart application, create a folder called templates. 
+	Inside templates folder create another folder called cart.
+	Inside cart folder, create a file called detail.html.
+```
+# 7.5. cart/detail.html
+```
+{% extends 'shop/base.html' %}
+{% load static %}
+{% block title %}
+    Your Shopping Cart
+{% endblock %}
+ 
+ 
+{% block content %}
+    <div class="container">
+        <div class="row" style="margin-top: 6%">
+        <h2>Your Shopping Cart
+            <span class="badge pull-right">
+                {% with totail_items=cart|length %}
+                    {% if cart|length > 0 %}
+                        My Shopping Order:
+                        <a href="{% url "cart:cart_detail" %}" style="color: #ffffff">
+                            {{ totail_items }} item {{ totail_items|pluralize }}, Kshs. {{ cart.get_total_price }}
+                        </a>
+                        {% else %}
+                        Your cart is empty.
+                    {% endif %}
+                {% endwith %}
+            </span>
+        </h2>
+            <table class="table table-striped table-hover">
+                <thead style="background-color: #5AC8FA">
+                    <tr>
+                        <th>Image</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Remove</th>
+                        <th>Unit Price</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in cart %}
+                    {% with product=item.product  %}
+                        <tr>
+                            <td>
+                                <a href="{{ product.get__absolute_url }}">
+                                    <img src="{% if product.image %} {{ product.image.url }} {% else %} {% static 'img/default.jpg' %} {% endif %}" alt="..." style="height: 130px; width: auto">
+                                </a>
+                            </td>
+                            <td>{{ product.name }}</td>
+                            <td>
+                                <form action="{% url "cart:cart_add" product.id %}" method="post">
+                                    {% csrf_token %}
+                                    {{ item.update_quantity_form.quantity }}
+                                    {{ item.update_quantity_form.update }}
+                                    <input type="submit" value="Update" class="btn btn-info">
+                                </form>
+                            </td>
+                            <td>
+                                <a href="{% url "cart:cart_remove" product.id %}">Remove</a>
+                            </td>
+                            <td>kshs. {{ item.price }}</td>
+                            <td>kshs. {{ item.total_price }}</td>
+                        </tr>
+                    {% endwith %}
+                {% endfor %}
+                <tr style="background-color: #5AC8FA">
+                    <td><b>Total</b></td>
+                    <td colspan="4"></td>
+                    <td colspan="num"><b>kshs. {{ cart.get_total_price }}</b></td>
+                </tr>
+                </tbody>
+            </table>
+        <p class="text-right">
+            <a href="{% url "shop:product_list" %}" class="btn btn-default">Continue Shopping</a>
+            <a href="" class="btn btn-primary">Checkout</a>
+        </p>
+        </div>
+    </div>
+{% endblock %}
+```
+```
+	We use this template to display items in our cart.
+	From line 25 to 68, we have created a bootstrap table that we use to display items in our cart. 
+	From line 37 to 61, we have created a loop that iterate over our items in our cart. 
+	From line 47 to 52, we have define a form where we allow user to change quantity of a given product in the cart. 
+	On line 55, we provide a link to allow user to remove item from our cart.
+```
+# 7.6. shop/views.py
+```
+	The next thing we need to do is to add a button in the product detail.html page in order to allow user to add 		product to our cart. Edit the views.py file of the shop application 
+```
+```
+
+from django.shortcuts import render, get_object_or_404
+from .models import Category, Product
+from cart.forms import CartAddProductForm
+ 
+ 
+def product_list(request, category_slug=None):
+    category = None
+    categories = Category.objects.all()
+    products = Product.objects.filter(available=True)
+    if category_slug:
+        category = get_object_or_404(Category, slug=category_slug)
+        products = Product.objects.filter(category=category)
+ 
+    context = {
+        'category': category,
+        'categories': categories,
+        'products': products
+    }
+    return render(request, 'shop/product/list.html', context)
+ 
+ 
+def product_detail(request, id, slug):
+    product = get_object_or_404(Product, id=id, slug=slug, available=True)
+    cart_product_form = CartAddProductForm()
+    context = {
+        'product': product,
+        'cart_product_form': cart_product_form
+    }
+    return render(request, 'shop/product/detail.html', context)
+
+
+	On line 3, we import CartAddProductForm package from our cart forms. 
+	On line 24, we have created our cart_product_form object. 
+	On line 27, we pass our form to render function. 
+```
+
+# 7.7. shop/detail.html
+```
+
+{% extends 'shop/base.html' %}
+{% load static %}
+{% block title %}
+    {% if category %}{{ category.name }} {% else %} Products {% endif %}
+{% endblock %}
+ 
+{% block content %}
+   <div class="container">
+      <div class="row" style="margin-top: 6%">
+ 
+        <div class="col-sm-8 blog-main">
+ 
+          <div class="blog-post">
+              <div class="row">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="col-md-6 text-right">
+                            <img src="{% if product.image %} {{ product.image.url }} {% else %} {% static 'img/default.jpg' %} {% endif %}" alt="..." style="height: 170px; width: auto">
+                        </div>
+                        <div class="col-md-6" style="padding-left: 20px">
+                            <h3>{{ product.name }}</h3>
+                            <h6><a href="{{ product.category.get_absolute_url }}">{{ product.category }}</a></h6>
+                            <p class="text-muted">Kshs. {{ product.price }}</p>
+                            <form action="{% url "cart:cart_add" product.id %}" method="post">
+                                {% csrf_token %}
+                                {{ cart_product_form }}
+                                <input type="submit" value="add to cart" class="btn btn-primary">
+                            </form>
+                            <p>{{ product.description|safe|linebreaksbr }}</p>
+                        </div>
+                    </div>
+                </div>
+              </div>
+ 
+ 
+          </div><!-- /.blog-post -->
+ 
+        </div><!-- /.blog-main -->
+      </div><!-- /.row -->
+ 
+    </div><!-- /.container -->
+{% endblock %}
+```
+```
+From line 24 to 28, we have added a form to allow users to add products to the cart.
+```
 
