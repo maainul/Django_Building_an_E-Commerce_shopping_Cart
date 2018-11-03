@@ -542,6 +542,105 @@ Line 24 – We display the product description.
 ```
 python manage.py runserver 
 ```
+# Lesson 6: Developing shopping cart class for Our Shop products
+```
+In this lesson we will use django session, learn about django session settings and store our cart in django session. Django session framework support anonymous and user session, the session framework allows developer to store arbitrary data for each user who visit your site and session data is stored on the server side. 
+```
 
+## 6.1.Create app name (cart):
+```
+	django-admin startapp cart
+```
+## 6.2.Edit settings.py:
+```
+INSTALLED_APPS = [
+    
+    'cart.apps.CartConfig',
+    …….
+    …….
+    ……
+]
+
+CART_SESSION_ID = 'cart'
+```
+## 6.3.Create cart.py inside the cart app:
+
+## Cart/Cart.py
+```
+from decimal import Decimal
+from django.conf import settings
+from shop.models import Product
+ 
+ 
+class Cart(object):
+    def __init__(self, request):
+        self.session = request.session
+        cart = self.session.get(settings.CART_SESSION_ID)
+        if not cart:
+            cart = self.session[settings.CART_SESSION_ID] = {}
+        self.cart = cart
+ 
+    def add(self, product, quantity=1, update_quantity=False):
+        product_id = str(product.id)
+        if product_id not in self.cart:
+            self.cart[product_id] = {'quantity': 0, 'price': str(product.price)}
+        if update_quantity:
+            self.cart[product_id]['quantity'] = quantity
+        else:
+            self.cart[product_id]['quantity'] += quantity
+        self.save()
+ 
+    def save(self):
+        self.session[settings.CART_SESSION_ID] = self.cart
+        self.session.modified = True
+ 
+    def remove(self, product):
+        product_id = str(product.id)
+        if product_id in self.cart:
+            del self.cart[product_id]
+            self.save()
+ 
+    def __iter__(self):
+        product_ids = self.cart.keys()
+        products = Product.objects.filter(id__in=product_ids)
+        for product in products:
+            self.cart[str(product.id)]['product'] = product
+ 
+        for item in self.cart.values():
+            item['price'] = Decimal(item['price'])
+            item['total_price'] = item['price'] * item['quantity']
+            yield item
+ 
+    def __len__(self):
+        return sum(item['quantity'] for item in self.cart.values())
+ 
+    def get_total_price(self):
+        return sum(Decimal(item['price']) * item['quantity'] for item in self.cart.values())
+ 
+    def clear(self):
+        del self.session[settings.CART_SESSION_ID]
+        self.session.modified = True
+```
+## Let’s understand the code in this file:
+```
+Line 1 – We import decimal data type in order to avoid issue of rounding off with regard to price.
+Line 2 – We import our settings configuration located in the settings.py file.
+Line 3 – We import our product model from our shop application
+Line 6 – We create a cart class that will help us manage our shopping cart.
+Line 7 – We require the cart to be initialized with request object.
+Line 8 – We store the current session using self.session = request.session and this help in making sure that the cart is available for other method in our Cart class.
+Line 9 – We try to get the cart using get method in the current session.
+Line 10 to 12 – If there is not cart in the session, we set an empty cart on line 11 by settings an empty dictionary in the session.
+Line 14 to 22 – We create a method to add product into our cart. The add method takes ( self, product, quantity=1, update_quantity=False) as it’s parameters.
+Line 15 – We use product_id as the key in the cart content dictionary, we convert product id into a string because Django uses json to serialize session data and json only allows string names.
+Line 17 – The product id is the key and the value we persist is the a dictionary with quantity and price of the product. We also convert the price of the product to string in order to serialize it.
+Line 22 – We save the cart in the session.
+Line 24 to 26 – We create save method which tracks changes in the cart and marks sessions as modified usingself.session.modified = True
+Line 28 to 32 – We create a method to remove a single product from the cart and save the cart in the session.
+Line 34 to 43 – We define an __iter__ (self) method which help us iterate through the items in contained in our cart and get the related product instances.
+Line 45 to 46 – We define a len method to return the total number of items store in our cart.
+Line 48 to 49 – We define get_total_price method to get the total cost of the items in the cart.
+Line 51 to 53 – We define a method to clear the cart session.
+```
 
 
