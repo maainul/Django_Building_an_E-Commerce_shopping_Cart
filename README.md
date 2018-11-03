@@ -952,4 +952,118 @@ def product_detail(request, id, slug):
 ```
 From line 24 to 28, we have added a form to allow users to add products to the cart.
 ```
+# Lesson 8: Developing a Context Processor for our Current Cart
 
+```
+In this lesson we are going to learn how to display the content of the cart in all our pages. This will help site visitor to see what is in their shopping cart.
+A context processor is a python function that takes request object as an argument and returns a python dictionary which is added to the request. Context processor are very important when you need to make something available to all Django templates.
+```
+```
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+```
+## Let’s have a look at the following context processors:
+```
+       django.template.context_processors.debug – This sets the boolean debug and sql queries variable in context 			representing the list of queries executed in the django request.
+       django.template.context_processors.request – This sets the request variable in the context
+       django.contrib.auth.context_processors.auth – This sets the user variable in the django request
+       django.contrib.messages.context_processors.messages – This sets messages variable in the context hence django knows 		how to display success or error messages on the template.
+```
+
+# 8.1.Create cart/context_processors.py
+```
+	from .cart import Cart
+ 
+	def cart(request):
+	    return {'cart': Cart(request)}
+```
+# Let’s understand the code:
+```
+       Line 1 – We import our cart Cart class
+       Line 4 – We create a python function called cart which takes request as a parameter.
+       Line 5 – We return a python dictionary which will be available to all templates render using request context.
+```   
+# 8.2. settings.py
+```
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+               ………
+		……..
+		……..
+                'cart.context_processors.cart',#new
+            ],
+        },
+    },
+]
+```
+```
+On line 67, we have added our cart context processor in template settings
+and this means that our context processor will be executed every time 
+a template is rendered using django request.
+```
+# 8.3.shop/base.html
+```
+<!DOCTYPE html>
+{% load staticfiles %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}On-line Shop{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+{% include 'shop/navbar.html' %}
+ 
+<div class="container">
+    <div class="row" style="margin-top: 6%">
+         <button class="btn btn-info pull-right">
+            {% with totail_items=cart|length %}
+                {% if cart|length > 0 %}
+                    My Shopping Order:
+                    <a href="{% url "cart:cart_detail" %}" style="color: #ffffff">
+                        {{ totail_items }} item {{ totail_items|pluralize }}, Kshs. {{ cart.get_total_price }}
+                    </a>
+                    {% else %}
+                    Your cart is empty.
+                {% endif %}
+            {% endwith %}
+         </button>
+    </div>
+</div>
+{% block content %}
+ 
+ 
+{% endblock %}
+ 
+<script src="{% static 'js/jquery.min.js' %}" type="text/javascript"></script>
+<script src="{% static 'js/bootstrap.min.js' %}" type="text/javascript"></script>
+</body>
+</html>
+```
+## Let’s understand the code we have added:
+```
+       Line 13 to 28 – we have created a bootstrap container.
+       Line 14 to 27 – we have created bootstrap row.
+       Line 25 to 26 – we create a bootstrap button.
+       Line 16 to 25 – we check whether our cart has items and display the content. If the cart is empty, we display “Your 	  cart is empty”.
+       Line 19 to 21 – we create a link to our cart detail page.
+```
