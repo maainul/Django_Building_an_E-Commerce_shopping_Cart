@@ -772,6 +772,12 @@ urlpatterns = [
 ```
 # 7.5. cart/detail.html
 ```
+(onlineshop) ➜  cart touch urls.py
+(onlineshop) ➜  cart mkdir templates
+(onlineshop) ➜  cart mkdir templates/cart
+(onlineshop) ➜  cart touch templates/cart/detail.html
+```
+```
 {% extends 'shop/base.html' %}
 {% load static %}
 {% block title %}
