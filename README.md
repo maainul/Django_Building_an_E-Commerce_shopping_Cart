@@ -1067,3 +1067,180 @@ a template is rendered using django request.
        Line 16 to 25 – we check whether our cart has items and display the content. If the cart is empty, we display “Your 	  cart is empty”.
        Line 19 to 21 – we create a link to our cart detail page.
 ```
+
+# Lesson 9: Persisting customer orders to the database
+```
+In this lesson we are going to learn how to save customer orders to our database. This will help site admin to see customer orders in Django admin site.
+
+When a shopping cart is checked out we need to save the order into the database, orders will container information about customer and the products they are buying. 
+```
+# 9.1. Create orders app
+```
+➜  dev mkdir 9.Persisting_customer_orders_to_the_database       
+➜  dev cd 9.Persisting_customer_orders_to_the_database 
+➜  9.Persisting_customer_orders_to_the_database cd onlineshop 
+➜  onlineshop source bin/activate
+(onlineshop) ➜  onlineshop cd src
+(onlineshop) ➜  src django-admin startapp orders
+```
+# 9.2. settings.py
+```
+INSTALLED_APPS = [
+    
+    'orders.apps.OrdersConfig’,
+    …….
+    …….
+    ……
+]
+```
+# 9.3. orders/models.py
+```
+from django.db import models
+from shop.models import Product
+
+
+class Order(models.Model):
+    first_name = models.CharField(max_length=60)
+    last_name = models.CharField(max_length=60)
+    email = models.EmailField()
+    address = models.CharField(max_length=150)
+    postal_code = models.CharField(max_length=30)
+    city = models.CharField(max_length=100)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    paid = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ('-created', )
+
+    def __str__(self):
+        return 'Order {}'.format(self.id)
+
+    def get_total_cost(self):
+        return sum(item.get_cost() for item in self.items.all())
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, related_name='order_items', on_delete=models.CASCADE)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return '{}'.format(self.id)
+
+    def get_cost(self):
+        return self.price * self.quantity
+```
+# Let’s understand the code in this file:
+```
+      Line 1 – We import django database model
+      Line 2 – We import our product model located in our shop model.
+      Line 5 – We create Order class where we capture customer details.
+      From line 6 to 14 – We capture customer details which include 
+      first name, last name, email, address, postal code, city, created date and updated date.
+      Line 14 – We have created a boolean field which we set default to false. This field is 
+      important since we can use this field to differentiate between paid and unpaid orders.
+      Line 16 to 17 – We create a meta class which we order our orders by the date created.
+      Line 22 to 23 – We define get_total_cost() method which we obtain the total cost of a given order.
+      Line 26 to 30 – We define OrderItem model which will allow us to store order, product, price per item and quantity.
+      Line 35 to 36 – We define get_cost() method where we multiply price and quantity of the products.
+```
+# 9.4. Migrations
+```
+python manage.py makemigrations
+python manage.py migrate
+```
+
+# 9.5. orders/admin.py
+```
+from django.contrib import admin
+from .models import Order, OrderItem
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    raw_id_fields = ['product']
+
+
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ['id', 'first_name', 'last_name', 'email', 'address', 'postal_code', 'city', 'paid', 'created',
+                    'updated']
+    list_filter = ['paid', 'created', 'updated']
+    inlines = [OrderItemInline]
+
+
+admin.site.register(Order, OrderAdmin)
+```
+
+# Let’s understand the code in this file:
+```
+    Line 1 – we import django admin model.
+    Line 2 – we import our Order and OrderItem model from orders models.py file.
+    Line 5 – we create OrderItemInline class which we use tabularInline.
+    Line 6 to 7 – we use our OrderItem item model and create a raw id field for product.
+    Line 10 – we create OrderAdmin class.
+    Line 11 – we create a list display of the customer.
+    Line 13 – we create a list filter using paid, created and updated fields.
+    Line 14 – we include our OrderItemInline class as an inline.
+    An inline allows you to include a model for appearing on the same edit page as the parent model.
+    Line 17 – we register our models in django admin site.
+```
+```
+Python manage.py runserver
+
+python manage.py createsuperuser
+```
+
+# 9.6. Creating Customer Orders
+```
+We need to use the order models we just created to persist customer orders into the 
+database when a user decided to place an order for our shopping cart. 
+The functionality to achieve this will work in the following steps:
+```
+```
+       We present a user an order form to fill in their data.
+       We create a new order instance with data entered by the user.
+       We create an associated order item for each item in the cart.
+       We save the order and customer and redirect customer to success page.
+       
+We need a form for customer to enter their details, 
+inside our orders app create a new file called forms.py file
+```
+
+
+
+# 9.7. orders/forms.py
+```
+from django import forms
+from .models import Order
+ 
+ 
+class OrderCreateForm(forms.ModelForm):
+    class Meta:
+        model = Order
+        fields = ['first_name', 'last_name', 'email', 'address', 'postal_code', 'city']
+```
+
+# Let’s understand the code:
+```
+
+      Line 1 – we import django forms.
+      Line 2 – we import Order class from orders models.py file.
+      Line 5 – we create OrderCreateForm form using django forms model.
+      Line 7 – we define which model to use, in this case we use Order.
+      Line 8 – we define form field as specified in our Order model.
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
