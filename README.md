@@ -1232,8 +1232,253 @@ class OrderCreateForm(forms.ModelForm):
       Line 8 – we define form field as specified in our Order model.
 
 ```
+# Lesson 10: Completing persisting customer orders to database
+```
+In this lesson we are going to complete the functionality of saving customer orders in the database. This will help site admin to see customer orders in Django admin sit.
+```
+# 10.1.Orders/views.py
+```
+from django.shortcuts import render
+from .models import OrderItem
+from .forms import OrderCreateForm
+from cart.cart import Cart
 
 
+def order_create(request):
+    cart = Cart(request)
+    if request.method == 'POST':
+        form = OrderCreateForm(request.POST)
+        if form.is_valid():
+            order = form.save()
+            for item in cart:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item['product'],
+                    price=item['price'],
+                    quantity=item['quantity']
+                )
+            cart.clear()
+        return render(request, 'orders/order/created.html', {'order': order})
+    else:
+        form = OrderCreateForm()
+    return render(request, 'orders/order/create.html', {'form': form})
+
+```
+```
+Let’s understand this code:
+Line 1 – we import django render function to assist show our template.
+Line 2 – we import our OrderItem model from our orders application.
+Line 3 – we import our OrderCreateForm form from forms.py file of orders application.
+Line 4 – we import our Cart class from our cart application.
+Line 7 – we create order_create(request) method which will process our order.
+Line 8 – we obtain the current cart from the session using Cart(request).
+Line 9 – we check whether the form is being submitted using post method.
+Line 10 – we create an instance of OrderCreateForm.
+Line 11 – we check whether the form is valid.
+Line 12 – we create a variable order and we save the order.
+
+Line 13 – we create a for loop where we are looping through all the item in the shopping cart.
+Line 14 – we use our OrderItem model to save each item in our cart using create method.
+Line 15 – we access our order instance
+Line 16 – we access the product from our cart instance.
+Line 17 – we access the price of the product from our cart instance.
+Line 18 – we access the quantity of the product from our cart instance.
+Line 20 – after saving our order we clear our cart
+Line 21 – we render a success page showing customer order was created successfully and we pass the order to this template. NB: We have not created this template yet.
+Line 23 – if the request was a get, we create an instance of OrderCreateForm form.
+Line 24 – we return the template where the use will see the form to fill.
+```
+# 10.2. Order/urls.py
+
+```
+from django.conf.urls import url
+from . import views
+
+app_name = 'orders'
+
+urlpatterns = [
+    url(r'^create/$', views.order_create, name='order_create')
+]
+```
+```
+Let’s understand the code:
+Line 1 – we import django url
+Line 2 – we import orders views
+Line 4 – we create a namespace for our orders application
+Line 7 – we create a url pattern that goes to order_create method in orders views.py file.
+```
+# 10.3. ecommerce/urls.py
+```
+from django.contrib import admin
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('cart', include('cart.urls')),
+    path('orders/', include('orders.urls')),
+    path('', include('shop.urls')),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+```
+
+
+
+# 10.4.cart/templates/cart/detail.html 
+```
+{% extends 'shop/base.html' %}
+{% load static %}
+{% block title %}
+    Your Shopping Cart
+{% endblock %}
+ 
+ 
+{% block content %}
+    <div class="container">
+        <div class="row" style="margin-top: 6%">
+        <h2>Your Shopping Cart
+            <span class="badge pull-right">
+                {% with totail_items=cart|length %}
+                    {% if cart|length > 0 %}
+                        My Shopping Order:
+                        <a href="{% url "cart:cart_detail" %}" style="color: #ffffff">
+                            {{ totail_items }} item {{ totail_items|pluralize }}, Kshs. {{ cart.get_total_price }}
+                        </a>
+                        {% else %}
+                        Your cart is empty.
+                    {% endif %}
+                {% endwith %}
+            </span>
+        </h2>
+            <table class="table table-striped table-hover">
+                <thead style="background-color: #5AC8FA">
+                    <tr>
+                        <th>Image</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Remove</th>
+                        <th>Unit Price</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in cart %}
+                    {% with product=item.product  %}
+                        <tr>
+                            <td>
+                                <a href="{{ product.get__absolute_url }}">
+                                    <img src="{% if product.image %} {{ product.image.url }} {% else %} {% static 'img/default.jpg' %} {% endif %}" alt="..." style="height: 130px; width: auto">
+                                </a>
+                            </td>
+                            <td>{{ product.name }}</td>
+                            <td>
+                                <form action="{% url "cart:cart_add" product.id %}" method="post">
+                                    {% csrf_token %}
+                                    {{ item.update_quantity_form.quantity }}
+                                    {{ item.update_quantity_form.update }}
+                                    <input type="submit" value="Update" class="btn btn-info">
+                                </form>
+                            </td>
+                            <td>
+                                <a href="{% url "cart:cart_remove" product.id %}">Remove</a>
+                            </td>
+                            <td>kshs. {{ item.price }}</td>
+                            <td>kshs. {{ item.total_price }}</td>
+                        </tr>
+                    {% endwith %}
+                {% endfor %}
+                <tr style="background-color: #5AC8FA">
+                    <td><b>Total</b></td>
+                    <td colspan="4"></td>
+                    <td colspan="num"><b>kshs. {{ cart.get_total_price }}</b></td>
+                </tr>
+                </tbody>
+            </table>
+ <p class="text-right">
+            <a href="{% url "shop:product_list" %}" class="btn btn-default">Continue Shopping</a>
+            <a href="{% url "orders:order_create" %}" class="btn btn-primary">Checkout</a>
+        </p>
+        </div>
+    </div>
+{% endblock %}
+```
+```
+	On line 71, we have added url for our checkout button.
+	We need to define templates for defining orders. 
+	Inside the orders application create templates folder. 
+```
+# 10.5. Create orders/create/create.html
+```
+	(onlineshop) ➜  orders mkdir templates
+	(onlineshop) ➜  orders mkdir templates/orders
+	(onlineshop) ➜  orders touch templates/orders/create.html
+```
+```
+{% extends 'shop/base.html' %}
+{% load static %}
+{% block title %}
+    Your Shopping Cart| Checkout
+{% endblock %}
+ 
+{% block content %}
+    <div class="container">
+        <div class="row" style="margin-top: 6%">
+            <div class="col-md-8">
+                <h4 class="page-header">Checkout</h4>
+                <form action="." method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}<br>
+                    <input type="submit" class="btn btn-primary" value="Submit order">
+                </form>
+            </div>
+            <div class="col-md-4">
+                <div class="page-header">
+                    Your Order
+                </div>
+                <ul class="list-group">
+                    {% for item in cart %}
+                        <li class="list-group-item">
+                        {{ item.quantity }}x {{ item.product.name }}
+                        <span>Kshs. {{ item.total_price }}</span>
+                        </li>
+                    {% endfor %}
+ 
+                <li class="list-group-item active">Total Cost: kshs. {{ cart.get_total_price }}</li>
+                </ul>
+ 
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+```
+```
+Let’s understand the code:
+    From line 12 to 16 we display the form where customer will fill their personal details.
+    From line 22 to 31 we display the the customer order and the total price.
+```
+# 10.6.orders/Created.html
+```
+{% extends 'shop/base.html' %}
+{% load static %}
+{% block title %}
+    Your Shopping Cart| Thank you
+{% endblock %}
+ 
+{% block content %}
+    <div class="container">
+        <div class="row" style="margin-top: 6%">
+            <div class="col-md-8 col-md-offset-2">
+                <h3 class="page-header">Thank You For Shopping With Us
+                </h3>
+                <p>Your order has been successfully completed. Your order number is <strong>{{ order.id }}</strong>.</p>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+```
+python manage.py runserver
 
 
 
